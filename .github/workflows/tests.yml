@@ -33,59 +33,44 @@ jobs:
         working-directory: nasa-app
         run: php artisan key:generate
 
-      - name: Fail if JS files exist
+      - name: Fail if non-PHP files added to Laravel core folders
         run: |
-            if git diff --name-only HEAD origin/master | grep ".js"; then
-              echo "❌ Tidak boleh file selain .php"
-              exit 1
-            fi
-      - name: Validate Uploaded Files
-        run: |
-          echo "🔎 Checking changed files..."
+          INVALID=$(git diff --name-only HEAD~1 HEAD | grep -E "^(nasa-app/app/|nasa-app/routes/).*\.(txt|json|js|md|css|env)$" || true)
 
-          # Jika ini event pull request → ambil diff dari base commit
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
-            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-            CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
-          
-          else
-            # Event push → cek apakah ada commit sebelumnya
-            if git rev-parse HEAD~1 >/dev/null 2>&1; then
-              CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
-            else
-              echo "⚠ Tidak ada commit sebelumnya. Tidak melakukan validasi."
-              exit 0
-            fi
-          fi
-          
-          echo "Changed files:"
-          echo "$CHANGED_FILES"
-          
-          HAS_ERROR=0
-          
-          # Loop setiap file yang berubah
-          for FILE in $CHANGED_FILES; do
-          
-            # Skip folder tertentu
-            if [[ "$FILE" == vendor/* || "$FILE" == storage/* || "$FILE" == public/* || "$FILE" == node_modules/* ]]; then
-              continue
-            fi
-          
-            # Jika file kosong
-            if [ ! -s "$FILE" ]; then
-              echo "❌ ERROR: File kosong terdeteksi → $FILE"
-              HAS_ERROR=1
-            fi
-          done
-          
-          if [ "$HAS_ERROR" -eq 1 ]; then
-            echo "❌ Build FAILED karena ada file kosong yang baru diupload."
+          if [ -n "$INVALID" ]; then
+            echo "❌ File tidak valid ditambahkan ke folder inti Laravel:"
+            echo "$INVALID"
             exit 1
           fi
-          
-          echo "✔ Semua file valid."
 
+          echo "✔ Tidak ada file asing di folder inti Laravel."
+
+
+      - name: Fail if PHP file missing <?php tag
+        run: |
+          PHP_FILES=$(git diff --name-only HEAD~1 HEAD | grep "\.php$" || true)
+
+          for FILE in $PHP_FILES; do
+            if ! grep -q "<?php" "$FILE"; then
+              echo "❌ File PHP tanpa tag <?php → $FILE"
+              exit 1
+            fi
+          done
+
+          echo "✔ Semua file PHP mengandung tag pembuka."
+
+
+      - name: Fail if collaborator creates unknown folders
+        run: |
+          NEW_DIRS=$(git diff --dirstat=files,0 HEAD~1 HEAD | awk '{print $2}' | grep -vE "nasa-app/(app|bootstrap|config|database|lang|public|resources|routes|storage|tests|vendor)" || true)
+
+          if [ -n "$NEW_DIRS" ]; then
+            echo "❌ Folder baru tidak dikenal terdeteksi:"
+            echo "$NEW_DIRS"
+            exit 1
+          fi
+
+          echo "✔ Tidak ada folder baru berbahaya."
 
 
 
