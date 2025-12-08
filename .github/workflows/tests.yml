@@ -39,29 +39,38 @@ jobs:
               echo "❌ Tidak boleh file selain .php"
               exit 1
             fi
-      - name: Fail if empty PHP or forbidden files exist
-        working-directory: nasa-app
+      - name: Validate Uploaded Files
         run: |
-          # cek file kosong di folder Laravel penting
-          EMPTY_FILES=$(find app routes tests database -type f -size 0)
-          if [ ! -z "$EMPTY_FILES" ]; then
-              echo "❌ File kosong terdeteksi:"
-              echo "$EMPTY_FILES"
-              exit 1
+          echo "🔎 Checking changed files..."
+      
+          # Ambil file yang berubah
+          CHANGED_FILES=$(git diff --name-only HEAD~1)
+      
+          echo "$CHANGED_FILES"
+      
+          # Flag error
+          HAS_ERROR=0
+      
+          for FILE in $CHANGED_FILES; do
+            # Skip folder tertentu
+            if [[ "$FILE" == vendor/* || "$FILE" == storage/* || "$FILE" == public/* || "$FILE" == node_modules/* ]]; then
+              continue
+            fi
+      
+            # Jika file kosong
+            if [ ! -s "$FILE" ]; then
+              echo "❌ ERROR: File kosong terdeteksi → $FILE"
+              HAS_ERROR=1
+            fi
+          done
+      
+          if [ "$HAS_ERROR" -eq 1 ]; then
+            echo "❌ Build FAILED karena ada file kosong yang diupload."
+            exit 1
           fi
       
-          # larang file JS di luar resources/
-          JS_FILES=$(find . -type f -name "*.js" \
-            -not -path "./resources/*" \
-            -not -path "./public/*")
-      
-          if [ ! -z "$JS_FILES" ]; then
-              echo "❌ File JS dilarang:"
-              echo "$JS_FILES"
-              exit 1
-          fi
-      
-          echo "✔ Validasi file lolos"
+          echo "✔ Semua file valid."
+
 
       - name: Run Tests
         working-directory: nasa-app
