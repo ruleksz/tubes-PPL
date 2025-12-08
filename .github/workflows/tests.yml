@@ -39,14 +39,29 @@ jobs:
               echo "❌ Tidak boleh file selain .php"
               exit 1
             fi
-      - name: Fail if empty files exist
+      - name: Fail if empty PHP or forbidden files exist
+        working-directory: nasa-app
         run: |
-          EMPTY_FILES=$(find . -type f -size 0)
+          # cek file kosong di folder Laravel penting
+          EMPTY_FILES=$(find app routes tests database -type f -size 0)
           if [ ! -z "$EMPTY_FILES" ]; then
-              echo "❌ File Kosong Terdeteksi:"
+              echo "❌ File kosong terdeteksi:"
               echo "$EMPTY_FILES"
               exit 1
           fi
+      
+          # larang file JS di luar resources/
+          JS_FILES=$(find . -type f -name "*.js" \
+            -not -path "./resources/*" \
+            -not -path "./public/*")
+      
+          if [ ! -z "$JS_FILES" ]; then
+              echo "❌ File JS dilarang:"
+              echo "$JS_FILES"
+              exit 1
+          fi
+      
+          echo "✔ Validasi file lolos"
 
       - name: Run Tests
         working-directory: nasa-app
