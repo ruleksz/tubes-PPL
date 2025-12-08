@@ -33,6 +33,21 @@ jobs:
         working-directory: nasa-app
         run: php artisan key:generate
 
+      - name: Fail if JS files exist
+        run: |
+            if git diff --name-only HEAD origin/master | grep ".js"; then
+              echo "❌ Tidak boleh file selain .php"
+              exit 1
+            fi
+      - name: Fail if empty files exist
+        run: |
+          EMPTY_FILES=$(find . -type f -size 0)
+          if [ ! -z "$EMPTY_FILES" ]; then
+              echo "❌ File Kosong Terdeteksi:"
+              echo "$EMPTY_FILES"
+              exit 1
+          fi
+
       - name: Run Tests
         working-directory: nasa-app
         run: php artisan test
