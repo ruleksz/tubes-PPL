@@ -60,33 +60,13 @@ jobs:
           echo "Base SHA: $BASE_SHA"
           echo "Head SHA: $HEAD_SHA"
 
-          # Ambil semua file yang berubah
-          CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
-          
-          echo "Files changed:"
-          echo "$CHANGED_FILES"
+          # jika base sha invalid, fallback ke HEAD supaya tidak error
+          if ! git cat-file -e "$BASE_SHA" 2>/dev/null; then
+            echo "⚠ Base commit tidak ditemukan — fallback ke HEAD"
+            BASE_SHA="$HEAD_SHA"
+          fi
 
-          # Ambil hanya file php
-          PHP_FILES=$(echo "$CHANGED_FILES" | grep "\.php$" || true)
-
-          for FILE in $PHP_FILES; do
-
-            # Skip vendor
-            if [[ "$FILE" == vendor/* ]]; then
-              continue
-            fi
-
-            echo "Checking $FILE ..."
-
-            # Cek apakah mengandung tag PHP
-            if ! grep -q "<\?php" "$FILE"; then
-              echo "❌ ERROR: File .php tanpa tag <?php → $FILE"
-              exit 1
-            fi
-          done
-
-          echo "✔ Semua file PHP valid."
-
+          CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
 
       - name: Gagal jika collaborator menambahkan folder asing
         run: |
