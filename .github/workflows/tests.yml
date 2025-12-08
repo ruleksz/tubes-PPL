@@ -97,23 +97,28 @@ jobs:
 
       - name: Gagal jika collaborator menambahkan folder asing
         run: |
-          # FIX fallback HEAD~1
+          # Tentukan commit sebelumnya
           if git rev-parse HEAD~1 >/dev/null 2>&1; then
             PREV=HEAD~1
           else
             PREV=HEAD
           fi
 
-          # FIX: whitelist folder tambahan (CI, git, vscode, node, dll)
-          WHITELIST="nasa-app/(app|bootstrap|config|database|lang|public|resources|routes|storage|tests|vendor|\.github|\.gitignore|\.vscode|node_modules)"
+          # Ambil folder yang berubah
+          NEW_DIRS=$(git diff --dirstat=files,0 $PREV HEAD | awk '{print $2}')
 
-          NEW_DIRS=$(git diff --dirstat=files,0 $PREV HEAD \
-            | awk '{print $2}' \
-            | grep -vE "$WHITELIST" || true)
+          # Filter hanya path di dalam nasa-app/
+          APP_DIRS=$(echo "$NEW_DIRS" | grep "^nasa-app/" || true)
 
-          if [ -n "$NEW_DIRS" ]; then
+          # Tentukan whitelist
+          WHITELIST="^nasa-app/(app|bootstrap|config|database|lang|public|resources|routes|storage|tests|vendor)/"
+
+          # Cari folder yang tidak masuk whitelist
+          INVALID=$(echo "$APP_DIRS" | grep -vE "$WHITELIST" || true)
+
+          if [ -n "$INVALID" ]; then
             echo "❌ Folder baru tidak dikenal terdeteksi:"
-            echo "$NEW_DIRS"
+            echo "$INVALID"
             exit 1
           fi
 
