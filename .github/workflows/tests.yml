@@ -97,20 +97,26 @@ jobs:
 
       - name: Gagal jika collaborator menambahkan folder asing
         run: |
-          # FIX: fallback HEAD~1
+          # FIX fallback HEAD~1
           if git rev-parse HEAD~1 >/dev/null 2>&1; then
             PREV=HEAD~1
           else
             PREV=HEAD
           fi
 
-          NEW_DIRS=$(git diff --dirstat=files,0 $PREV HEAD | awk '{print $2}' | grep -vE "nasa-app/(app|bootstrap|config|database|lang|public|resources|routes|storage|tests|vendor)" || true)
+          # FIX: whitelist folder tambahan (CI, git, vscode, node, dll)
+          WHITELIST="nasa-app/(app|bootstrap|config|database|lang|public|resources|routes|storage|tests|vendor|\.github|\.gitignore|\.vscode|node_modules)"
+
+          NEW_DIRS=$(git diff --dirstat=files,0 $PREV HEAD \
+            | awk '{print $2}' \
+            | grep -vE "$WHITELIST" || true)
 
           if [ -n "$NEW_DIRS" ]; then
             echo "❌ Folder baru tidak dikenal terdeteksi:"
             echo "$NEW_DIRS"
             exit 1
           fi
+
           echo "✔ Tidak ada folder baru berbahaya."
 
       - name: Gagal jika kebanyakan Debugg dan tidak dihapus found (dd, dump, var_dump)
