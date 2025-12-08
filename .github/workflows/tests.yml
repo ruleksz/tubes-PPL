@@ -1,0 +1,38 @@
+name: laravel-tests
+
+on:
+  push:
+    branches: ["master"]
+  pull_request: 
+    branches: ["master"]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, pcntl, pdo_mysql
+          coverage: xdebug
+
+      - name: Install Dependencies
+        working-directory: nasa-app
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Copy .env.example to .env
+        working-directory: nasa-app
+        run: cp .env.example .env
+
+      - name: Generate App Key
+        working-directory: nasa-app
+        run: php artisan key:generate
+
+      - name: Run Tests
+        working-directory: nasa-app
+        run: php artisan test --no-interaction
