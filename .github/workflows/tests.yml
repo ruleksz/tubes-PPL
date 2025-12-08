@@ -42,34 +42,39 @@ jobs:
       - name: Validate Uploaded Files
         run: |
           echo "🔎 Checking changed files..."
-      
-          # Ambil file yang berubah
-          CHANGED_FILES=$(git diff --name-only HEAD~1)
-      
+
+          # Cek apakah HEAD~1 ada
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            CHANGED_FILES=$(git diff --name-only HEAD~1)
+          else
+            echo "⚠ HEAD~1 tidak ditemukan, memakai file dari commit terakhir."
+            CHANGED_FILES=$(git ls-files)
+          fi
+          
           echo "$CHANGED_FILES"
-      
-          # Flag error
+          
           HAS_ERROR=0
-      
+          
           for FILE in $CHANGED_FILES; do
-            # Skip folder tertentu
+            # Skip folder
             if [[ "$FILE" == vendor/* || "$FILE" == storage/* || "$FILE" == public/* || "$FILE" == node_modules/* ]]; then
               continue
             fi
-      
-            # Jika file kosong
+          
+            # Validasi file kosong
             if [ ! -s "$FILE" ]; then
               echo "❌ ERROR: File kosong terdeteksi → $FILE"
               HAS_ERROR=1
             fi
           done
-      
+          
           if [ "$HAS_ERROR" -eq 1 ]; then
-            echo "❌ Build FAILED karena ada file kosong yang diupload."
+            echo "❌ Build FAILED karena ada file kosong."
             exit 1
           fi
-      
+          
           echo "✔ Semua file valid."
+
 
 
       - name: Run Tests
