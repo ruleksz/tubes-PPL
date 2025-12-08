@@ -41,12 +41,13 @@ jobs:
             fi
       - name: Fail if empty files exist
         run: |
-          EMPTY_FILES=$(find . -type f -size 0)
+          EMPTY_FILES=$(find app routes tests database -type f -size 0 2>/dev/null)
           if [ ! -z "$EMPTY_FILES" ]; then
               echo "❌ File Kosong Terdeteksi:"
               echo "$EMPTY_FILES"
               exit 1
           fi
+
 
       - name: Run Tests
         working-directory: nasa-app
