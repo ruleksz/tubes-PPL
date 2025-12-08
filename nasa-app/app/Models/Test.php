@@ -1,1 +1,3 @@
-<div>Hallo tests</div>
+<?php
+echo "<div>Hallo tests</div>"
+?>
