@@ -23,7 +23,7 @@ jobs:
 
       - name: Install Dependencies
         working-directory: nasa-app
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-progress --prefer-dist
 
       - name: Copy .env.example to .env
         working-directory: nasa-app
@@ -33,7 +33,7 @@ jobs:
         working-directory: nasa-app
         run: php artisan key:generate
 
-      - name: Fail if non-PHP files added to Laravel core folders
+      - name: Gagal Jika bukan File PHP ke inti Laravel
         run: |
           INVALID=$(git diff --name-only HEAD~1 HEAD | grep -E "^(nasa-app/app/|nasa-app/routes/).*\.(txt|json|js|md|css|env)$" || true)
 
@@ -42,11 +42,9 @@ jobs:
             echo "$INVALID"
             exit 1
           fi
-
           echo "✔ Tidak ada file asing di folder inti Laravel."
 
-
-      - name: Fail if PHP file missing <?php tag
+      - name: Gagal jika didalam php tidak ada <?php tag
         run: |
           PHP_FILES=$(git diff --name-only HEAD~1 HEAD | grep "\.php$" || true)
 
@@ -56,11 +54,9 @@ jobs:
               exit 1
             fi
           done
-
           echo "✔ Semua file PHP mengandung tag pembuka."
 
-
-      - name: Fail if collaborator creates unknown folders
+      - name: Gagal jika collaborator menambahkan folder asing
         run: |
           NEW_DIRS=$(git diff --dirstat=files,0 HEAD~1 HEAD | awk '{print $2}' | grep -vE "nasa-app/(app|bootstrap|config|database|lang|public|resources|routes|storage|tests|vendor)" || true)
 
@@ -69,10 +65,19 @@ jobs:
             echo "$NEW_DIRS"
             exit 1
           fi
-
           echo "✔ Tidak ada folder baru berbahaya."
+          
+      - name: Gagal jika kebanyakan Debugg dan tidak dihapus found (dd, dump, var_dump)
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep "\.php$" || true)
 
-
+          for FILE in $CHANGED_FILES; do
+            if grep -E "dd\(|dump\(|var_dump\(" "$FILE" > /dev/null; then
+              echo "❌ Dilarang push kode berisi dd(), dump(), atau var_dump() → $FILE"
+              exit 1
+            fi
+          done
+          echo "✔ Tidak ada debug code (dd/dump/var_dump)."
 
       - name: Run Tests
         working-directory: nasa-app
