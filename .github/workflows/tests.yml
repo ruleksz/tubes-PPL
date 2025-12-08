@@ -43,25 +43,36 @@ jobs:
         run: |
           echo "🔎 Checking changed files..."
 
-          # Cek apakah HEAD~1 ada
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
-            CHANGED_FILES=$(git diff --name-only HEAD~1)
+          # Jika ini event pull request → ambil diff dari base commit
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          
           else
-            echo "⚠ HEAD~1 tidak ditemukan, memakai file dari commit terakhir."
-            CHANGED_FILES=$(git ls-files)
+            # Event push → cek apakah ada commit sebelumnya
+            if git rev-parse HEAD~1 >/dev/null 2>&1; then
+              CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+            else
+              echo "⚠ Tidak ada commit sebelumnya. Tidak melakukan validasi."
+              exit 0
+            fi
           fi
           
+          echo "Changed files:"
           echo "$CHANGED_FILES"
           
           HAS_ERROR=0
           
+          # Loop setiap file yang berubah
           for FILE in $CHANGED_FILES; do
-            # Skip folder
+          
+            # Skip folder tertentu
             if [[ "$FILE" == vendor/* || "$FILE" == storage/* || "$FILE" == public/* || "$FILE" == node_modules/* ]]; then
               continue
             fi
           
-            # Validasi file kosong
+            # Jika file kosong
             if [ ! -s "$FILE" ]; then
               echo "❌ ERROR: File kosong terdeteksi → $FILE"
               HAS_ERROR=1
@@ -69,11 +80,12 @@ jobs:
           done
           
           if [ "$HAS_ERROR" -eq 1 ]; then
-            echo "❌ Build FAILED karena ada file kosong."
+            echo "❌ Build FAILED karena ada file kosong yang baru diupload."
             exit 1
           fi
           
           echo "✔ Semua file valid."
+
 
 
 
