@@ -44,17 +44,27 @@ jobs:
           fi
           echo "✔ Tidak ada file asing di folder inti Laravel."
 
-      - name: Gagal jika didalam php tidak ada <?php tag
+      - name: Validate PHP file content (must contain <?php)
         run: |
+          echo "🔎 Checking PHP contents..."
+
+          # Ambil semua file php yang berubah
           PHP_FILES=$(git diff --name-only HEAD~1 HEAD | grep "\.php$" || true)
 
           for FILE in $PHP_FILES; do
-            if ! grep -q "<?php" "$FILE"; then
-              echo "❌ File PHP tanpa tag <?php → $FILE"
+            # Skip vendor
+            if [[ "$FILE" == vendor/* ]]; then
+              continue
+            fi
+
+            # Cek apakah file mengandung tag <?php
+            if ! grep -q "<\?php" "$FILE"; then
+              echo "❌ ERROR: File .php tanpa tag <?php terdeteksi → $FILE"
               exit 1
             fi
           done
-          echo "✔ Semua file PHP mengandung tag pembuka."
+
+          echo "✔ Semua file PHP berisi tag <?php."
 
       - name: Gagal jika collaborator menambahkan folder asing
         run: |
