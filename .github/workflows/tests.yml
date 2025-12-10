@@ -14,7 +14,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0    # FIX (ambil semua history)
+          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -35,7 +35,7 @@ jobs:
       - name: Laravel Validator
         run: |
           echo "🔎 Running Laravel project validator..."
-      
+
           REQUIRED_DIRS=("app" "routes" "vendor")
           for DIR in "${REQUIRED_DIRS[@]}"; do
             if [ ! -d "$DIR" ]; then
@@ -43,35 +43,35 @@ jobs:
               exit 1
             fi
           done
-      
+
           echo "✔ Folder Laravel lengkap."
-      
+
           # Validate composer.json exists and valid
           if [ ! -f composer.json ]; then
             echo "❌ ERROR: composer.json tidak ditemukan!"
             exit 1
           fi
-      
+
           echo "✔ composer.json ditemukan. Validating JSON..."
           cat composer.json | jq empty || (echo "❌ composer.json tidak valid JSON!" && exit 1)
-      
+
           # Validate .env.example
           if [ ! -f .env.example ]; then
             echo "❌ ERROR: .env.example wajib ada!"
             exit 1
           fi
-      
+
           echo "✔ env.example ditemukan."
-      
+
           # PHP linting
           echo "🔎 Checking PHP syntax..."
           PHP_FILES=$(git ls-files "*.php")
           for FILE in $PHP_FILES; do
             php -l "$FILE" >/dev/null 2>&1 || (echo "❌ Syntax error di file: $FILE" && exit 1)
           done
-      
+
           echo "✔ Tidak ada syntax PHP error."
-      
+
           # Check for empty PHP files
           for FILE in $PHP_FILES; do
             if [ ! -s "$FILE" ]; then
@@ -79,65 +79,70 @@ jobs:
               exit 1
             fi
           done
-      
-          echo "✔ Semua file PHP memiliki isi."
-      
-          echo "🎉 Laravel validator PASSED!"
 
+          echo "✔ Semua file PHP memiliki isi."
+          echo "🎉 Laravel validator PASSED!"
 
       - name: Gagal Jika bukan File PHP ke inti Laravel
         run: |
-          # FIX: Handling jika tidak ada HEAD~1
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
-            PREV=HEAD~1
-          else
-            PREV=HEAD
+          # Skip jika tidak ada commit sebelumnya
+          if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+            echo "⚠ First commit detected — skip core file validation."
+            exit 0
           fi
-          INVALID=$(git diff --name-only $PREV HEAD | grep -E "^(curhat-app/app/|curhat-app/routes/).*\.(txt|json|js|md|css|env)$" || true)
+
+          PREV=HEAD~1
+          INVALID=$(git diff --name-only $PREV HEAD | grep -E "^(curhat-app/app|curhat-app/routes)/.*\.(txt|json|js|md|css|env)$" || true)
+
           if [ -n "$INVALID" ]; then
             echo "❌ File tidak valid ditambahkan ke folder inti Laravel:"
             echo "$INVALID"
             exit 1
           fi
+
           echo "✔ Tidak ada file asing."
-      
+
       - name: Gagal jika collaborator menambahkan folder asing
         run: |
-          # Tentukan commit sebelumnya
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
-            PREV=HEAD~1
-          else
-            PREV=HEAD
+          if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+            echo "⚠ First commit detected — skip folder validation."
+            exit 0
           fi
-          # Ambil folder yang berubah
+
+          PREV=HEAD~1
           NEW_DIRS=$(git diff --dirstat=files,0 $PREV HEAD | awk '{print $2}')
-          # Filter hanya path di dalam curhat-app/
           APP_DIRS=$(echo "$NEW_DIRS" | grep "^curhat-app/" || true)
-          # Tentukan whitelist
+
           WHITELIST="^curhat-app/(app|bootstrap|config|database|lang|public|resources|routes|storage|tests|vendor)/"
-          # Cari folder yang tidak masuk whitelist
+
           INVALID=$(echo "$APP_DIRS" | grep -vE "$WHITELIST" || true)
+
           if [ -n "$INVALID" ]; then
             echo "❌ Folder baru tidak dikenal terdeteksi:"
             echo "$INVALID"
             exit 1
           fi
+
           echo "✔ Tidak ada folder baru berbahaya."
-      - name: Gagal jika kebanyakan Debugg dan tidak dihapus found (dd, dump, var_dump)
+
+      - name: Gagal jika kebanyakan Debugg (dd, dump, var_dump)
         run: |
-          # FIX fallback HEAD~1
-          if git rev-parse HEAD~1 >/dev/null 2>&1; then
-            PREV=HEAD~1
-          else
-            PREV=HEAD
+          if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+            echo "⚠ First commit detected — skip debug check."
+            exit 0
           fi
+
+          PREV=HEAD~1
           CHANGED_FILES=$(git diff --name-only $PREV HEAD | grep "\.php$" || true)
+
           for FILE in $CHANGED_FILES; do
             if grep -E "dd\(|dump\(|var_dump\(" "$FILE" > /dev/null; then
               echo "❌ Dilarang push kode berisi dd(), dump(), var_dump() → $FILE"
               exit 1
             fi
           done
+
           echo "✔ Tidak ada debug code."
+
       - name: Run Tests
         run: php artisan test
