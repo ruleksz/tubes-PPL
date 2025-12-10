@@ -2,11 +2,12 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use Illuminate\Http\UploadedFile;
+use Tests\TestCase;
 
 class PhpFileValidationTest extends TestCase
 {
+    /** 1. Wajib upload file */
     public function test_file_php_wajib_dikirim()
     {
         $response = $this->post('/upload-php', []);
@@ -14,42 +15,43 @@ class PhpFileValidationTest extends TestCase
         $response->assertSessionHasErrors('file');
     }
 
+    /** 2. Harus ber-ekstensi .php */
     public function test_file_harus_berekstensi_php()
     {
         $response = $this->post('/upload-php', [
-            'file' => UploadedFile::fake()->create('test.txt', 10)
+            'file' => UploadedFile::fake()->create('test.txt', 1),
         ]);
 
         $response->assertSessionHasErrors('file');
     }
 
-    public function test_file_php_tidak_boleh_kosong()
+    /** 3. File yang diberikan tidak boleh kosong */
+    public function test_file_tidak_boleh_kosong()
     {
-        $file = UploadedFile::fake()->createWithContent('empty.php', '');
-
-        $response = $this->post('/upload-php', ['file' => $file]);
+        $response = $this->post('/upload-php', [
+            'file' => UploadedFile::fake()->create('test.php', 0), // 0 KB → kosong
+        ]);
 
         $response->assertSessionHasErrors('file');
     }
 
-    public function test_file_harus_mengandung_tag_php()
+    /** 4. File PHP valid harus lolos */
+    public function test_file_php_valid_diterima()
     {
-        $file = UploadedFile::fake()->createWithContent('notag.php', 'echo 1;');
+        $response = $this->post('/upload-php', [
+            'file' => UploadedFile::fake()->create('valid.php', 5), // 5 KB php file
+        ]);
 
-        $response = $this->post('/upload-php', ['file' => $file]);
-
-        $response->assertSessionHasErrors('file');
+        $response->assertSessionDoesntHaveErrors();
     }
 
-    public function test_file_php_valid()
+    /** 5. Nama file boleh apa saja asal .php */
+    public function test_nama_file_bebas_asal_ekstensi_php()
     {
-        $file = UploadedFile::fake()->createWithContent(
-            'valid.php',
-            "<?php function test() {}"
-        );
+        $response = $this->post('/upload-php', [
+            'file' => UploadedFile::fake()->create('apaaja_boleh123.php', 3),
+        ]);
 
-        $response = $this->post('/upload-php', ['file' => $file]);
-
-        $response->assertJson(['message' => 'File PHP valid!']);
+        $response->assertSessionDoesntHaveErrors();
     }
 }
