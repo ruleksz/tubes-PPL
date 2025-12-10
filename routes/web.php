@@ -16,6 +16,5 @@ use App\Http\Controllers\ValidatorUploadController;
 
 Route::post('/upload-php', [ValidatorUploadController::class, 'store']);
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::view('/','chat.index');
+
