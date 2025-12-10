@@ -117,5 +117,4 @@ jobs:
           done
           echo "✔ Tidak ada debug code."
       - name: Run Tests
-        working-directory: curhat-app
         run: php artisan test
