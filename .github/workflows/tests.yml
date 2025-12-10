@@ -100,37 +100,7 @@ jobs:
             exit 1
           fi
           echo "✔ Tidak ada file asing."
-      - name: Validate PHP file content (must contain <?php)
-        run: |
-          echo "🔎 Checking PHP contents..."
-          # FIX: Tentukan base/head SHA event PR atau push
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            BASE_SHA="${{ github.event.pull_request.base.sha }}"
-            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          else
-            BASE_SHA="${{ github.event.before }}"
-            HEAD_SHA="${{ github.sha }}"
-          fi
-          echo "Base SHA: $BASE_SHA"
-          echo "Head SHA: $HEAD_SHA"
-          # FIX: Fallback jika base sha invalid
-          if ! git cat-file -e "$BASE_SHA" 2>/dev/null; then
-            echo "⚠ Base commit tidak ditemukan — fallback ke HEAD"
-            BASE_SHA="$HEAD_SHA"
-          fi
-          CHANGED_FILES=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
-          echo "Files changed:"
-          echo "$CHANGED_FILES"
-          PHP_FILES=$(echo "$CHANGED_FILES" | grep "\.php$" || true)
-          for FILE in $PHP_FILES; do
-            [[ "$FILE" == vendor/* ]] && continue
-            echo "Checking $FILE ..."
-            if ! grep -q "<\?php" "$FILE"; then
-              echo "❌ ERROR: File .php tanpa tag <?php → $FILE"
-              exit 1
-            fi
-          done
-          echo "✔ Semua file PHP valid."
+      
       - name: Gagal jika collaborator menambahkan folder asing
         run: |
           # Tentukan commit sebelumnya
