@@ -32,6 +32,59 @@ jobs:
       - name: Generate App Key
         run: php artisan key:generate
 
+      - name: Laravel Validator
+        run: |
+          echo "🔎 Running Laravel project validator..."
+      
+          REQUIRED_DIRS=("app" "routes" "vendor")
+          for DIR in "${REQUIRED_DIRS[@]}"; do
+            if [ ! -d "$DIR" ]; then
+              echo "❌ ERROR: Folder wajib tidak ditemukan → $DIR"
+              exit 1
+            fi
+          done
+      
+          echo "✔ Folder Laravel lengkap."
+      
+          # Validate composer.json exists and valid
+          if [ ! -f composer.json ]; then
+            echo "❌ ERROR: composer.json tidak ditemukan!"
+            exit 1
+          fi
+      
+          echo "✔ composer.json ditemukan. Validating JSON..."
+          cat composer.json | jq empty || (echo "❌ composer.json tidak valid JSON!" && exit 1)
+      
+          # Validate .env.example
+          if [ ! -f .env.example ]; then
+            echo "❌ ERROR: .env.example wajib ada!"
+            exit 1
+          fi
+      
+          echo "✔ env.example ditemukan."
+      
+          # PHP linting
+          echo "🔎 Checking PHP syntax..."
+          PHP_FILES=$(git ls-files "*.php")
+          for FILE in $PHP_FILES; do
+            php -l "$FILE" >/dev/null 2>&1 || (echo "❌ Syntax error di file: $FILE" && exit 1)
+          done
+      
+          echo "✔ Tidak ada syntax PHP error."
+      
+          # Check for empty PHP files
+          for FILE in $PHP_FILES; do
+            if [ ! -s "$FILE" ]; then
+              echo "❌ File PHP kosong ditemukan: $FILE"
+              exit 1
+            fi
+          done
+      
+          echo "✔ Semua file PHP memiliki isi."
+      
+          echo "🎉 Laravel validator PASSED!"
+
+
       - name: Gagal Jika bukan File PHP ke inti Laravel
         run: |
           # FIX: Handling jika tidak ada HEAD~1
