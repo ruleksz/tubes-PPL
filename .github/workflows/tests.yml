@@ -24,15 +24,12 @@ jobs:
           coverage: xdebug
 
       - name: Install Dependencies
-        working-directory: curhat-app
         run: composer install --no-progress --prefer-dist
 
       - name: Copy .env.example to .env
-        working-directory: curhat-app
         run: cp .env.example .env
 
       - name: Generate App Key
-        working-directory: curhat-app
         run: php artisan key:generate
 
       - name: Gagal Jika bukan File PHP ke inti Laravel
