@@ -72,24 +72,19 @@ class CurhatController extends Controller
             "ringkas, dan ajak user untuk bercerita lebih lanjut." .
             ($category ? " Category: $category." : "");
 
-        // Payload benar
         $payload = [
             "contents" => [
                 [
+                    "role" => "user",
                     "parts" => [
-                        ["text" => $systemPrompt]
-                    ]
-                ],
-                [
-                    "parts" => [
-                        ["text" => $userMessage]
+                        ["text" => $systemPrompt . "\n\nUser: " . $userMessage]
                     ]
                 ]
             ]
         ];
 
-        // URL benar
-        $url = env('GEMINI_ENDPOINT') .
+        // ENDPOINT FIX
+        $url = "https://generativelanguage.googleapis.com/v1/models/" .
             env('MODEL') .
             ":generateContent?key=" . env('GEMINI_API_KEY');
 
@@ -100,7 +95,7 @@ class CurhatController extends Controller
             $reply = $data['candidates'][0]['content']['parts'][0]['text']
                 ?? "Maaf, aku belum bisa merespon.";
 
-            // safety
+            // Safety Untuk Kata Berbahaya
             if ($this->detectSelfHarm($userMessage)) {
                 $reply = "Maaf, aku merasa kamu sedang mengalami hal yang sangat berat. " .
                     "Jika kamu merasa berbahaya atau berpikir untuk menyakiti diri sendiri, " .
@@ -109,9 +104,10 @@ class CurhatController extends Controller
 
             return $reply;
         } catch (\Exception $e) {
-            return "Maaf, terjadi kesalahan. Coba lagi nanti.";
+            return "Maaf, server AI mengalami gangguan. (" . $e->getMessage() . ")";
         }
     }
+
 
 
     protected function detectSelfHarm($text)

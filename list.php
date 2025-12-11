@@ -1,7 +1,7 @@
 <?php
 header("Content-Type: application/json");
 
-$apiKey = "AIzaSyABAlUbfi_WxVFZBKhPkAeyKb-wJamJ5Cg";
+$apiKey = "AIzaSyAMy4ncN8WQC-F4eVA7okwXhV49SuB0kfg";
 $url = "https://generativelanguage.googleapis.com/v1beta/models?key=" . $apiKey;
 
 $ch = curl_init($url);
