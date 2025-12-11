@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -12,8 +13,8 @@ class CurhatController extends Controller
     public function index()
     {
         // public listing (only meta, no full user identities)
-        return Curhat::select('id','title','category','status','created_at')
-                     ->orderBy('id','desc')->paginate(20);
+        return Curhat::select('id', 'title', 'category', 'status', 'created_at')
+            ->orderBy('id', 'desc')->paginate(20);
     }
 
     public function show($id)
@@ -66,42 +67,57 @@ class CurhatController extends Controller
     // helper untuk panggil Gemini
     protected function callGemini(string $userMessage, $category = null)
     {
-        $systemPrompt = "Kamu adalah AI teman curhat yang lembut, empatik, dan tidak memberikan saran medis. " .
-                        "Berikan tanggapan yang menenangkan, ringkas, dan ajak user untuk bercerita lebih lanjut jika mau." .
-                        ($category ? " Category: $category." : "");
+        $systemPrompt = "Kamu adalah AI teman curhat yang lembut, empatik, " .
+            "dan tidak memberikan saran medis. Berikan tanggapan yang menenangkan, " .
+            "ringkas, dan ajak user untuk bercerita lebih lanjut." .
+            ($category ? " Category: $category." : "");
 
+        // Payload benar
         $payload = [
             "contents" => [
                 [
-                    "role" => "user",
                     "parts" => [
-                        ["text" => $systemPrompt . "\n\nUser: " . $userMessage]
+                        ["text" => $systemPrompt]
+                    ]
+                ],
+                [
+                    "parts" => [
+                        ["text" => $userMessage]
                     ]
                 ]
             ]
         ];
 
-        $url = env('GEMINI_ENDPOINT') . env('GEMINI_API_KEY');
+        // URL benar
+        $url = env('GEMINI_ENDPOINT') .
+            env('MODEL') .
+            ":generateContent?key=" . env('GEMINI_API_KEY');
 
         try {
-            $res = Http::post($url, $payload);
-            $data = $res->json();
-            $reply = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
-            if (!$reply) $reply = "Maaf, saat ini aku belum bisa merespon. Coba lagi sebentar ya.";
-            // safety: simple moderation check:
+            $response = Http::post($url, $payload);
+            $data = $response->json();
+
+            $reply = $data['candidates'][0]['content']['parts'][0]['text']
+                ?? "Maaf, aku belum bisa merespon.";
+
+            // safety
             if ($this->detectSelfHarm($userMessage)) {
-                $reply = "Maaf, aku merasa kamu sedang mengalami hal yang sangat berat. Jika kamu merasa berbahaya atau berpikir untuk menyakiti diri sendiri, tolong segera hubungi layanan darurat setempat atau orang terdekat. Aku di sini mendengarkan, tapi aku bukan pengganti bantuan profesional.";
+                $reply = "Maaf, aku merasa kamu sedang mengalami hal yang sangat berat. " .
+                    "Jika kamu merasa berbahaya atau berpikir untuk menyakiti diri sendiri, " .
+                    "tolong segera hubungi layanan darurat setempat atau orang terdekat.";
             }
+
             return $reply;
         } catch (\Exception $e) {
-            return "Maaf, terjadi masalah saat memproses. Coba lagi nanti.";
+            return "Maaf, terjadi kesalahan. Coba lagi nanti.";
         }
     }
+
 
     protected function detectSelfHarm($text)
     {
         $lower = strtolower($text);
-        $keywords = ['bunuh','bunuh diri','mau mati','tidak mau hidup','akhiri hidup','suicide','kill myself','end my life'];
+        $keywords = ['bunuh', 'bunuh diri', 'mau mati', 'tidak mau hidup', 'akhiri hidup', 'suicide', 'kill myself', 'end my life'];
         foreach ($keywords as $k)
             if (str_contains($lower, $k)) return true;
         return false;
