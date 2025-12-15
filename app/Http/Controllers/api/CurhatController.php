@@ -69,7 +69,6 @@ class CurhatController extends Controller
     {
         $systemPrompt = "Kamu adalah AI teman curhat yang lembut, empatik, " .
             "dan tidak memberikan saran medis. Berikan tanggapan yang menenangkan, " .
-            "ringkas, dan ajak user untuk bercerita lebih lanjut." .
             ($category ? " Category: $category." : "");
 
         $payload = [
