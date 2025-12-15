@@ -1,4 +1,3 @@
-<!-- resources/views/curhat/chat.blade.php -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
