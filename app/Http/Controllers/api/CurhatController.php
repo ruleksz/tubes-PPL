@@ -16,7 +16,83 @@ class CurhatController extends Controller
         return Curhat::select('id', 'title', 'category', 'status', 'created_at')
             ->orderBy('id', 'desc')->paginate(20);
     }
+    
 
+    public function reply(Request $request, $id)
+{
+    $request->validate([
+        'message' => 'required|string'
+    ]);
+
+    $curhat = Curhat::findOrFail($id);
+
+    // 1️⃣ simpan pesan user
+    CurhatMessage::create([
+        'curhat_id' => $curhat->id,
+        'sender' => 'user',
+        'message' => $request->message
+    ]);
+
+    // 2️⃣ ambil semua riwayat chat
+    $messages = CurhatMessage::where('curhat_id', $curhat->id)
+        ->orderBy('id')
+        ->get();
+
+    // 3️⃣ kirim ke Gemini (pakai helper baru)
+    $aiReply = $this->callGeminiWithHistory($messages, $curhat->category);
+
+    // 4️⃣ simpan jawaban AI
+    CurhatMessage::create([
+        'curhat_id' => $curhat->id,
+        'sender' => 'ai',
+        'message' => $aiReply
+    ]);
+
+    return response()->json([
+        'reply' => $aiReply
+    ]);
+}
+
+    protected function callGeminiWithHistory($messages, $category = null)
+{
+    $systemPrompt = "Kamu adalah AI teman curhat yang empatik, lembut, dan aman. ".
+        "Jangan menghakimi, jangan menyebut diri sebagai AI, ".
+        "dan ajak user untuk bercerita lebih lanjut.".
+        ($category ? " Category: $category." : "");
+
+    // ubah history jadi format Gemini
+    $contents = [];
+
+    // system prompt di awal
+    $contents[] = [
+        "role" => "user",
+        "parts" => [["text" => $systemPrompt]]
+    ];
+
+    foreach ($messages as $msg) {
+        $contents[] = [
+            "role" => $msg->sender === 'user' ? 'user' : 'model',
+            "parts" => [["text" => $msg->message]]
+        ];
+    }
+
+    $payload = [
+        "contents" => $contents
+    ];
+
+    $url = "https://generativelanguage.googleapis.com/v1/models/" .
+        env('MODEL') .
+        ":generateContent?key=" . env('GEMINI_API_KEY');
+
+    try {
+        $response = Http::post($url, $payload)->json();
+
+        return $response['candidates'][0]['content']['parts'][0]['text']
+            ?? "Aku masih di sini, mau ceritakan lebih lanjut?";
+    } catch (\Exception $e) {
+        return "Maaf, aku masih berusaha mendengarkan kamu.";
+    }
+}
     public function show($id)
     {
         $curhat = Curhat::with('messages')->findOrFail($id);
