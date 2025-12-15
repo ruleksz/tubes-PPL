@@ -23,6 +23,8 @@ Route::get('/curhat/{id}', [CurhatController::class,'show']);        // detail c
 Route::post('/curhat/{id}/message', [CurhatMessageController::class,'send']); // user balas
 // admin reply bisa pakai middleware admin (tidak dipakai di contoh sederhana)
 
+Route::post('/curhat/{id}/reply', [CurhatController::class, 'reply']);
+
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
