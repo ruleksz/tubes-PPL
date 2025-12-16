@@ -146,7 +146,11 @@ jobs:
 
       - name: ❌ Validate new Blade files in resources/views
         run: |
-          BASE=origin/${{ github.base_ref }}
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE=origin/${{ github.base_ref }}
+          else
+            BASE=HEAD~1
+          fi
 
           NEW_FILES=$(git diff --name-only --diff-filter=A $BASE...HEAD)
 
@@ -164,7 +168,11 @@ jobs:
 
       - name: ❌ Validate new files in app & routes (PHP only)
         run: |
-          BASE=origin/${{ github.base_ref }}
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE=origin/${{ github.base_ref }}
+          else
+            BASE=HEAD~1
+          fi
 
           NEW_FILES=$(git diff --name-only --diff-filter=A $BASE...HEAD)
 
