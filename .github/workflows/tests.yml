@@ -144,5 +144,41 @@ jobs:
 
           echo "✔ Tidak ada debug code."
 
+      - name: ❌ Validate new Blade files in resources/views
+        run: |
+          BASE=origin/${{ github.base_ref }}
+
+          NEW_FILES=$(git diff --name-only --diff-filter=A $BASE...HEAD)
+
+          INVALID=$(echo "$NEW_FILES" \
+            | grep "^resources/views/" \
+            | grep -v "\.blade\.php$" || true)
+
+          if [ -n "$INVALID" ]; then
+            echo "❌ File BARU tidak valid di resources/views (harus .blade.php):"
+            echo "$INVALID"
+            exit 1
+          fi
+
+          echo "✔ File Blade baru valid"
+
+      - name: ❌ Validate new files in app & routes (PHP only)
+        run: |
+          BASE=origin/${{ github.base_ref }}
+
+          NEW_FILES=$(git diff --name-only --diff-filter=A $BASE...HEAD)
+
+          INVALID=$(echo "$NEW_FILES" \
+            | grep -E "^(app|routes)/" \
+            | grep -v "\.php$" || true)
+
+          if [ -n "$INVALID" ]; then
+            echo "❌ File BARU non-PHP terdeteksi di app / routes:"
+            echo "$INVALID"
+            exit 1
+          fi
+
+          echo "✔ File baru di app & routes valid (PHP)"
+
       - name: Run Tests
         run: php artisan test
