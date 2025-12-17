@@ -18,10 +18,7 @@ class Kernel extends ConsoleKernel
     /**
      * Register the commands for the application.
      */
-    protected function commands(): void
-    {
-        $this->load(__DIR__.'/Commands');
-
-        require base_path('routes/console.php');
-    }
+    protected $commands = [
+        \App\Console\Commands\ValidatePhpFiles::class,
+    ];
 }
