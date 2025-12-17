@@ -149,7 +149,7 @@
         chatBox.innerHTML = '';
     }
 
-    loadHistory();
+    loadHistory(;
 </script>
 
 </body>
