@@ -2,56 +2,112 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Http\UploadedFile;
+use Symfony\Component\Finder\Finder;
 use Tests\TestCase;
 
 class PhpFileValidationTest extends TestCase
 {
-    /** 1. Wajib upload file */
-    public function test_file_php_wajib_dikirim()
+    /**
+     * Test Case 1 harus php
+     */
+    public function test_harus_php()
     {
-        $response = $this->post('/upload-php', []);
-
-        $response->assertSessionHasErrors('file');
-    }
-
-    /** 2. Harus ber-ekstensi .php */
-    public function test_file_harus_berekstensi_php()
-    {
-        $response = $this->post('/upload-php', [
-            'file' => UploadedFile::fake()->create('test.txt', 1),
+        $finder = new Finder();
+        $finder->files()->in([
+            app_path(),
+            base_path('routes'),
+            resource_path('views'),
         ]);
 
-        $response->assertSessionHasErrors('file');
+        $invalidFiles = [];
+
+        foreach ($finder as $file) {
+            if ($file->getExtension() !== 'php') {
+                $invalidFiles[] = $file->getRelativePathname();
+            }
+        }
+
+        $this->assertEmpty(
+            $invalidFiles,
+            'File non-PHP ditemukan' . implode(', ', $invalidFiles)
+        );
+    }
+    /**
+     * Test Case 2: Valid Syntax
+     * file php harus valid
+     */
+    public function test_file_php_syntax_valid()
+    {
+        $finder = new Finder();
+        $finder->files()
+            ->in([app_path(), base_path('routes'),  resource_path('views')])
+            ->name('*.php');
+
+        $errors = [];
+
+        foreach ($finder as $file) {
+            $output = [];
+            $return = 0;
+            exec("php -l {$file->getRealPath()}", $output, $return);
+
+            if ($return !== 0) {
+                $errors[] = $file->getRelativePathname();
+            }
+        }
+
+        $this->assertEmpty(
+            $errors,
+            'File dengan syntax error: ' . implode(', ', $errors)
+        );
     }
 
-    /** 3. File yang diberikan tidak boleh kosong */
-    public function test_file_tidak_boleh_kosong()
+    /**
+     * Test Case 3: Not Empty
+     * File PHP tidak boleh kosong (0 byte)
+     */
+    public function test_file_php_tidak_boleh_kosong()
     {
-        $response = $this->post('/upload-php', [
-            'file' => UploadedFile::fake()->create('test.php', 0), // 0 KB → kosong
-        ]);
+        $finder = new Finder();
+        $finder->files()
+            ->in([app_path(), base_path('routes'),  resource_path('views')])
+            ->name('*.php')
+            ->size('== 0');
 
-        $response->assertSessionHasErrors('file');
+        $emptyFiles = [];
+        foreach ($finder as $file) {
+            $emptyFiles[] = $file->getRelativePathname();
+        }
+
+        $this->assertEmpty(
+            $emptyFiles,
+            'File kosong ditemukan: ' . implode(', ', $emptyFiles)
+        );
     }
 
-    /** 4. File PHP valid harus lolos */
-    public function test_file_php_valid_diterima()
+
+    /**
+     * Test case 4: Tidak ada debug code
+     */
+    public function test_tidak_ada_debug_code()
     {
-        $response = $this->post('/upload-php', [
-            'file' => UploadedFile::fake()->create('valid.php', 5), // 5 KB php file
-        ]);
+        $finder = new Finder();
+        $finder->files()
+            ->in([app_path(), base_path('routes'),  resource_path('views')])
+            ->name('*.php');
 
-        $response->assertSessionDoesntHaveErrors();
-    }
+        $filesWithDebug = [];
 
-    /** 5. Nama file boleh apa saja asal .php */
-    public function test_nama_file_bebas_asal_ekstensi_php()
-    {
-        $response = $this->post('/upload-php', [
-            'file' => UploadedFile::fake()->create('apaaja_boleh123.php', 3),
-        ]);
+        foreach ($finder as $file) {
+            $content = file_get_contents($file->getRealPath());
 
-        $response->assertSessionDoesntHaveErrors();
+            if (preg_match('/\b(dd|dump|var_dump)\s*\(/', $content)) {
+                $filesWithDebug[] = $file->getRelativePathname();
+            }
+        }
+
+        $this->assertEmpty(
+            $filesWithDebug,
+            'Debug code terdeteksi di: ' . implode(', ', $filesWithDebug)
+        );
     }
 }
