@@ -24,7 +24,7 @@ jobs:
           coverage: xdebug
 
       - name: Install Dependencies
-        run: composer install --no-progress --prefer-dist
+        run: composer install --no-interaction --no-progress
 
       - name: Copy .env.example to .env
         run: cp .env.example .env
