@@ -33,4 +33,4 @@ jobs:
         run: php artisan key:generate
 
       - name: Validasi File PHP yang Di-push
-        run: php artisan validate:pushed-files
+        run: php artisan validate:php-files
