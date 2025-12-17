@@ -40,7 +40,7 @@ class PhpFileValidationTest extends TestCase
     {
         $finder = new Finder();
         $finder->files()
-            ->in([app_path(), base_path('routes'),  resource_path('views')])
+            ->in([app_path(), base_path('routes'), resource_path('views')])
             ->name('*.php');
 
         $errors = [];
@@ -64,26 +64,49 @@ class PhpFileValidationTest extends TestCase
     /**
      * Test Case 3: Not Empty
      * File PHP tidak boleh kosong (0 byte)
+     * dan tidak boleh hanya berisi tag PHP / komentar
      */
     public function test_file_php_tidak_boleh_kosong()
     {
         $finder = new Finder();
         $finder->files()
-            ->in([app_path(), base_path('routes'),  resource_path('views')])
-            ->name('*.php')
-            ->size('== 0');
+            ->in([app_path(), base_path('routes'), resource_path('views')])
+            ->name('*.php');
 
-        $emptyFiles = [];
+        $invalidFiles = [];
+
         foreach ($finder as $file) {
-            $emptyFiles[] = $file->getRelativePathname();
+            // 1. Validasi ukuran file
+            if ($file->getSize() === 0) {
+                $invalidFiles[] = $file->getRelativePathname() . ' (0 byte)';
+                continue;
+            }
+
+            // 2. Ambil dan bersihkan isi file
+            $content = trim(file_get_contents($file->getRealPath()));
+
+            // Hapus tag <?php di awal
+            $content = preg_replace('/^\<\?php\s*/', '', $content);
+
+            // Hapus komentar (//, #, /* */)
+            $content = preg_replace([
+                '/\/\/.*$/m',
+                '/#.*$/m',
+                '/\/\*[\s\S]*?\*\//',
+            ], '', $content);
+
+            // Jika setelah dibersihkan tetap kosong
+            if (trim($content) === '') {
+                $invalidFiles[] = $file->getRelativePathname() . ' (hanya tag PHP / komentar)';
+            }
         }
 
         $this->assertEmpty(
-            $emptyFiles,
-            'File kosong ditemukan: ' . implode(', ', $emptyFiles)
+            $invalidFiles,
+            "File PHP tidak boleh kosong atau hanya berisi tag PHP:\n" .
+            implode("\n", $invalidFiles)
         );
     }
-
 
     /**
      * Test case 4: Tidak ada debug code
@@ -92,7 +115,7 @@ class PhpFileValidationTest extends TestCase
     {
         $finder = new Finder();
         $finder->files()
-            ->in([app_path(), base_path('routes'),  resource_path('views')])
+            ->in([app_path(), base_path('routes'), resource_path('views')])
             ->name('*.php');
 
         $filesWithDebug = [];

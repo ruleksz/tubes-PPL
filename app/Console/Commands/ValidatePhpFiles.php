@@ -25,8 +25,8 @@ class ValidatePhpFiles extends Command
 
         foreach ($finder as $file) {
             $relativePath = $file->getRelativePathname();
-            $filename     = $file->getFilename();
-            $realPath     = $file->getRealPath();
+            $filename = $file->getFilename();
+            $realPath = $file->getRealPath();
 
             /**
              * TEST CASE 1
@@ -36,17 +36,38 @@ class ValidatePhpFiles extends Command
                 str_ends_with($filename, '.php') ||
                 str_ends_with($filename, '.blade.php');
 
-            if (! $isPhp) {
+            if (!$isPhp) {
                 $errors[] = "❌ [HARUS PHP] File non-PHP ditemukan: {$relativePath}";
                 continue;
             }
 
             /**
              * TEST CASE 2
-             * File PHP tidak boleh kosong
+             * File PHP tidak boleh kosong & tidak boleh hanya berisi tag PHP
              */
+
+            // Validasi ukuran file
             if ($file->getSize() === 0) {
                 $errors[] = "❌ [NOT EMPTY] File kosong: {$relativePath}";
+                continue;
+            }
+
+            // Ambil isi file
+            $content = trim(file_get_contents($file->getRealPath()));
+
+            // Hapus tag PHP di awal
+            $contentWithoutPhpTag = preg_replace('/^\<\?php\s*/', '', $content);
+
+            // Hapus komentar (single line & multi line)
+            $contentWithoutComments = preg_replace([
+                '/\/\/.*$/m',        // // komentar
+                '/#.*$/m',           // # komentar
+                '/\/\*[\s\S]*?\*\//' // /* komentar */
+            ], '', $contentWithoutPhpTag);
+
+            // Jika setelah dibersihkan tetap kosong
+            if (trim($contentWithoutComments) === '') {
+                $errors[] = "❌ [NOT EMPTY] File hanya berisi tag PHP atau komentar: {$relativePath}";
                 continue;
             }
 
@@ -73,7 +94,7 @@ class ValidatePhpFiles extends Command
             }
         }
 
-        if (! empty($errors)) {
+        if (!empty($errors)) {
             $this->error('🚫 Validasi GAGAL. Ditemukan pelanggaran:');
             foreach ($errors as $error) {
                 $this->line($error);
